@@ -208,10 +208,12 @@ The quirk is documented here for completeness.
 
 | Item | Version |
 |------|---------|
-| OS | AlmaLinux 10.1 |
+| Hardware | Dell XPS 16 9640 |
+| Firmware | 1.8.0 (2024-08-15) |
+| OS | AlmaLinux 10.1 (Heliotrope Lion) |
 | Kernel | 6.12.0-124.43.1.el10_1.x86_64 |
-| ipu6-drivers | HEAD as of 2026-03-15 |
-| ipu6-camera-bins | HEAD as of 2026-03-15 |
+| ipu6-drivers | da921f7 (2026-03-15) |
+| ipu6-camera-bins | 30e8766 (2026-03-15) |
 | linux-firmware | 20260130-19.3.el10_1 |
 | Sensor | OmniVision OVTI02C1 (ov02c10 driver) |
 
