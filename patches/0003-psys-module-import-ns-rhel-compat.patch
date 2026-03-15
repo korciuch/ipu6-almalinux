@@ -1,0 +1,49 @@
+From: Kyle Orciuch <kyle@edgetrace.ai>
+Date: Sun, 15 Mar 2026 00:00:00 +0000
+Subject: [PATCH 3/3] psys: use string-literal MODULE_IMPORT_NS on RHEL kernels
+
+Upstream commit switching MODULE_IMPORT_NS to the string-literal form
+was gated on LINUX_VERSION_CODE >= 6.13.0.  AlmaLinux 10.1 ships a
+6.12.x kernel that includes the RHEL backport of this change — the
+macro form causes a build error:
+
+  error: too many arguments to function 'MODULE_IMPORT_NS'
+
+Add && !defined(RHEL_RELEASE_CODE) to the version check so that RHEL
+kernels (which define RHEL_RELEASE_CODE regardless of their VERSION_CODE)
+always use the string-literal form.
+
+Affects both ipu-psys.c (EP/MTL path) and ipu6-psys.c (legacy path).
+
+Signed-off-by: Kyle Orciuch <kyle@edgetrace.ai>
+---
+ drivers/media/pci/intel/ipu6/psys/ipu-psys.c  | 2 +-
+ drivers/media/pci/intel/ipu6/psys/ipu6-psys.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/media/pci/intel/ipu6/psys/ipu-psys.c b/drivers/media/pci/intel/ipu6/psys/ipu-psys.c
+index f45f0abf4..98f02c32a 100644
+--- a/drivers/media/pci/intel/ipu6/psys/ipu-psys.c
++++ b/drivers/media/pci/intel/ipu6/psys/ipu-psys.c
+@@ -2741,7 +2741,7 @@ module_exit(ipu_psys_exit);
+ MODULE_AUTHOR("Bingbu Cao <bingbu.cao@intel.com>");
+ MODULE_LICENSE("GPL");
+ MODULE_DESCRIPTION("Intel IPU6 processing system driver");
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0)
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0) && !defined(RHEL_RELEASE_CODE)
+ MODULE_IMPORT_NS(DMA_BUF);
+ MODULE_IMPORT_NS(INTEL_IPU6);
+ #else
+diff --git a/drivers/media/pci/intel/ipu6/psys/ipu6-psys.c b/drivers/media/pci/intel/ipu6/psys/ipu6-psys.c
+index 914fb9922..1c06ce00b 100644
+--- a/drivers/media/pci/intel/ipu6/psys/ipu6-psys.c
++++ b/drivers/media/pci/intel/ipu6/psys/ipu6-psys.c
+@@ -35,7 +35,7 @@
+ #include "ipu6-platform-buttress-regs.h"
+ #endif
+
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0)
++#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0) && !defined(RHEL_RELEASE_CODE)
+ MODULE_IMPORT_NS(DMA_BUF);
+ #else
+ MODULE_IMPORT_NS("DMA_BUF");

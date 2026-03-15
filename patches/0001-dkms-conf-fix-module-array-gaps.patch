@@ -1,0 +1,242 @@
+From: Kyle Orciuch <kyle@edgetrace.ai>
+Date: Sun, 15 Mar 2026 00:00:00 +0000
+Subject: [PATCH 1/3] dkms.conf: fix module array gaps when ov05c10 is skipped
+
+AlmaLinux 10.1 (kernel 6.12) does not ship CONFIG_V4L2_CCI_I2C, so the
+ov05c10 conditional block is skipped.  The original file used static
+indices [0]..[21]; skipping ov05c10 left a gap (e.g. nothing at [6])
+which caused DKMS to silently drop all subsequent modules.
+
+Replace the static index literals with a $_idx counter incremented by
+((_idx++)) after each entry so indices are always contiguous regardless
+of which conditional branches are taken.
+
+Also tighten the ov05c10 block: check CONFIG_V4L2_CCI_I2C in
+/boot/config-${kernelver} before registering the module, in addition to
+the existing kernel-version guard.
+
+Signed-off-by: Kyle Orciuch <kyle@edgetrace.ai>
+---
+ dkms.conf | 143 +++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 113 insertions(+), 30 deletions(-)
+
+diff --git a/dkms.conf b/dkms.conf
+index d9667cb10..37e9b5591 100644
+--- a/dkms.conf
++++ b/dkms.conf
+@@ -40,113 +40,143 @@ KV_IPU6_ISYS=6.10.0
+ KV_IMX471=6.10.0
+ KV_S5K3J1=6.10.0
+
+-BUILT_MODULE_NAME[0]="hm11b1"
+-BUILT_MODULE_LOCATION[0]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[0]="/updates"
+-
+-BUILT_MODULE_NAME[1]="ov01a1s"
+-BUILT_MODULE_LOCATION[1]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[1]="/updates"
+-
+-BUILT_MODULE_NAME[2]="ov02c10"
+-BUILT_MODULE_LOCATION[2]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[2]="/updates"
+-
+-BUILT_MODULE_NAME[3]="ov02e10"
+-BUILT_MODULE_LOCATION[3]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[3]="/updates"
+-
+-BUILT_MODULE_NAME[4]="hm2170"
+-BUILT_MODULE_LOCATION[4]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[4]="/updates"
+-
+-BUILT_MODULE_NAME[5]="hm2172"
+-BUILT_MODULE_LOCATION[5]="drivers/media/i2c"
+-DEST_MODULE_LOCATION[5]="/updates"
++# Use a sequential index to avoid gaps in the module array
++_idx=0
++
++BUILT_MODULE_NAME[$_idx]="hm11b1"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
++
++BUILT_MODULE_NAME[$_idx]="ov01a1s"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
++
++BUILT_MODULE_NAME[$_idx]="ov02c10"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
++
++BUILT_MODULE_NAME[$_idx]="ov02e10"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
++
++BUILT_MODULE_NAME[$_idx]="hm2170"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
++
++BUILT_MODULE_NAME[$_idx]="hm2172"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
+
+ if ! version_lt ${KERNEL_VERSION} ${KV_OV05C10}; then
+-    BUILD_EXCLUSIVE_CONFIG="CONFIG_VIDEO_V4L2_I2C CONFIG_V4L2_CCI_I2C"
+-    BUILT_MODULE_NAME[6]="ov05c10"
+-    BUILT_MODULE_LOCATION[6]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[6]="/updates"
++    if grep -q '^CONFIG_V4L2_CCI_I2C=[ym]' /boot/config-${kernelver} 2>/dev/null; then
++        BUILD_EXCLUSIVE_CONFIG="CONFIG_VIDEO_V4L2_I2C CONFIG_V4L2_CCI_I2C"
++        BUILT_MODULE_NAME[$_idx]="ov05c10"
++        BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++        DEST_MODULE_LOCATION[$_idx]="/updates"
++        ((_idx++))
++    fi
+ fi
+
+ if version_lt ${KERNEL_VERSION} ${KV_OV2740}; then
+-    BUILT_MODULE_NAME[6]="ov2740"
+-    BUILT_MODULE_LOCATION[6]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[6]="/updates"
++    BUILT_MODULE_NAME[$_idx]="ov2740"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if ! version_lt ${KERNEL_VERSION} ${KV_IPU6_ISYS}; then
+     PATCH[0]="0001-v6.10-IPU6-headers-used-by-PSYS.patch"
+ fi
+
+-BUILT_MODULE_NAME[7]="intel-ipu6-psys"
+-BUILT_MODULE_LOCATION[7]="drivers/media/pci/intel/ipu6/psys"
+-DEST_MODULE_LOCATION[7]="/updates"
++BUILT_MODULE_NAME[$_idx]="intel-ipu6-psys"
++BUILT_MODULE_LOCATION[$_idx]="drivers/media/pci/intel/ipu6/psys"
++DEST_MODULE_LOCATION[$_idx]="/updates"
++((_idx++))
+
+ if ! version_lt ${KERNEL_VERSION} ${KV_IMX471}; then
+-    BUILT_MODULE_NAME[8]="imx471"
+-    BUILT_MODULE_LOCATION[8]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[8]="/updates"
++    BUILT_MODULE_NAME[$_idx]="imx471"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if ! version_lt ${KERNEL_VERSION} ${KV_S5K3J1}; then
+-    BUILT_MODULE_NAME[8]="s5k3j1"
+-    BUILT_MODULE_LOCATION[8]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[8]="/updates"
++    BUILT_MODULE_NAME[$_idx]="s5k3j1"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if version_lt ${KERNEL_VERSION} ${KV_HI556}; then
+-    BUILT_MODULE_NAME[8]="hi556"
+-    BUILT_MODULE_LOCATION[8]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[8]="/updates"
++    BUILT_MODULE_NAME[$_idx]="hi556"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if version_lt ${KERNEL_VERSION} ${KV_IPU6_ISYS}; then
+-    BUILT_MODULE_NAME[9]="intel-ipu6"
+-    BUILT_MODULE_LOCATION[9]="drivers/media/pci/intel/ipu6"
+-    DEST_MODULE_LOCATION[9]="/updates"
+-
+-    BUILT_MODULE_NAME[10]="intel-ipu6-isys"
+-    BUILT_MODULE_LOCATION[10]="drivers/media/pci/intel/ipu6"
+-    DEST_MODULE_LOCATION[10]="/updates"
++    BUILT_MODULE_NAME[$_idx]="intel-ipu6"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/pci/intel/ipu6"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
++
++    BUILT_MODULE_NAME[$_idx]="intel-ipu6-isys"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/pci/intel/ipu6"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if version_lt ${KERNEL_VERSION} ${KV_OV01A10}; then
+-    BUILT_MODULE_NAME[11]="ov01a10"
+-    BUILT_MODULE_LOCATION[11]="drivers/media/i2c"
+-    DEST_MODULE_LOCATION[11]="/updates"
++    BUILT_MODULE_NAME[$_idx]="ov01a10"
++    BUILT_MODULE_LOCATION[$_idx]="drivers/media/i2c"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi
+
+ if version_lt ${KERNEL_VERSION} ${KV_IVSC}; then
+-    BUILT_MODULE_NAME[12]="ljca"
+-    DEST_MODULE_LOCATION[12]="/updates"
++    BUILT_MODULE_NAME[$_idx]="ljca"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[13]="spi-ljca"
+-    DEST_MODULE_LOCATION[13]="/updates"
++    BUILT_MODULE_NAME[$_idx]="spi-ljca"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[14]="gpio-ljca"
+-    DEST_MODULE_LOCATION[14]="/updates"
++    BUILT_MODULE_NAME[$_idx]="gpio-ljca"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[15]="i2c-ljca"
+-    DEST_MODULE_LOCATION[15]="/updates"
++    BUILT_MODULE_NAME[$_idx]="i2c-ljca"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[16]="mei-vsc"
+-    DEST_MODULE_LOCATION[16]="/updates"
++    BUILT_MODULE_NAME[$_idx]="mei-vsc"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[17]="intel_vsc"
+-    DEST_MODULE_LOCATION[17]="/updates"
++    BUILT_MODULE_NAME[$_idx]="intel_vsc"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[18]="mei_csi"
+-    DEST_MODULE_LOCATION[18]="/updates"
++    BUILT_MODULE_NAME[$_idx]="mei_csi"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[19]="mei_ace"
+-    DEST_MODULE_LOCATION[19]="/updates"
++    BUILT_MODULE_NAME[$_idx]="mei_ace"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[20]="mei_pse"
+-    DEST_MODULE_LOCATION[20]="/updates"
++    BUILT_MODULE_NAME[$_idx]="mei_pse"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+
+-    BUILT_MODULE_NAME[21]="mei_ace_debug"
+-    DEST_MODULE_LOCATION[21]="/updates"
++    BUILT_MODULE_NAME[$_idx]="mei_ace_debug"
++    DEST_MODULE_LOCATION[$_idx]="/updates"
++    ((_idx++))
+ fi

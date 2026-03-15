@@ -1,0 +1,36 @@
+From: Kyle Orciuch <kyle@edgetrace.ai>
+Date: Sun, 15 Mar 2026 00:00:00 +0000
+Subject: [PATCH 2/3] Makefile: guard ov05c10 behind HAS_V4L2_CCI check
+
+AlmaLinux 10.1 (RHEL 10) does not ship CONFIG_V4L2_CCI_I2C in its
+kernel config.  The ov05c10 driver depends on cci.h which is only
+available when that config is enabled.  Without this guard the build
+fails immediately when trying to compile ov05c10.
+
+Probe /boot/config-$(KERNELRELEASE) at build time and set HAS_V4L2_CCI
+accordingly; only set CONFIG_ICAMERA_OV05C10=m when the CCI I2C helper
+is actually present.
+
+Signed-off-by: Kyle Orciuch <kyle@edgetrace.ai>
+---
+ Makefile | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index 60e819cbb..2bc1bbfe0 100644
+--- a/Makefile
++++ b/Makefile
+@@ -102,9 +102,13 @@ export CONFIG_ICAMERA_OV01A10 = m
+ endif
+
+ # Note OV05C10 check is reversed, it is not build on too old kernels
++# Also requires CONFIG_V4L2_CCI_I2C which is not present in all distro kernels
++HAS_V4L2_CCI := $(shell grep -q '^CONFIG_V4L2_CCI_I2C=[ym]' /boot/config-$(KERNELRELEASE) 2>/dev/null && echo 1 || echo 0)
+ ifeq ($(call version_lt,$(KERNEL_VERSION),$(KV_OV05C10)),false)
++ifneq ($(HAS_V4L2_CCI),0)
+ export CONFIG_ICAMERA_OV05C10 = m
+ endif
++endif
+
+ ifeq ($(call version_lt,$(KERNEL_VERSION),$(KV_IMX471)),false)
+ export CONFIG_ICAMERA_IMX471 = m
