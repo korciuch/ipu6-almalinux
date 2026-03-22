@@ -53,6 +53,32 @@ info "Step 1: Install build dependencies"
 run dnf install -y epel-release
 run dnf install -y dkms gcc make kernel-devel-"${KVER}"
 
+# ── Reboot guard: dkms dependency may pull in a newer kernel ──────────────────
+# dnf install dkms hard-depends on kernel-devel-matched which pulls in
+# kernel-core + kernel-modules-core for the latest kernel. Only core modules
+# are installed — kernel-modules (wifi, GPU, etc.) is not. We install the full
+# module set here, then require a reboot so Steps 2-7 run on the correct kernel.
+if [[ $DRY_RUN -eq 0 ]]; then
+    LATEST_KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' 2>/dev/null \
+        | sort -V | tail -1)
+    if [[ -n "$LATEST_KVER" && "$LATEST_KVER" != "$KVER" ]]; then
+        info "New kernel detected: $LATEST_KVER (running: $KVER)"
+        info "Installing full kernel module set for $LATEST_KVER before reboot..."
+        run dnf install -y \
+            "kernel-modules-${LATEST_KVER}" \
+            "kernel-modules-extra-${LATEST_KVER}"
+        echo ""
+        echo "========================================================"
+        echo " Reboot required before the DKMS build can proceed."
+        echo " The new kernel's full driver set is now installed."
+        echo ""
+        echo " After rebooting, re-run this script:"
+        echo "   sudo bash $0"
+        echo "========================================================"
+        exit 0
+    fi
+fi
+
 # ── Dependency check ──────────────────────────────────────────────────────────
 for cmd in git dkms dracut curl; do
     command -v "$cmd" >/dev/null 2>&1 || die "Required command not found: $cmd"
@@ -153,11 +179,4 @@ echo " A working system shows /dev/media0 and ~48 /dev/video* nodes."
 echo "========================================================"
 echo ""
 
-if [[ $DRY_RUN -eq 0 ]]; then
-    read -r -p "Reboot now? [y/N] " _ans
-    if [[ "${_ans,,}" == "y" ]]; then
-        reboot
-    else
-        echo "Remember to reboot before testing the camera."
-    fi
-fi
+echo "Remember to reboot before testing the camera."
